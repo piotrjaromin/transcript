@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  transcript:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./models:/app/models
+    environment:
+      - WHISPER_MODEL=ggml-medium.en.bin  # Override with different model if needed
+    command: ["server", "--port", "8080"]
