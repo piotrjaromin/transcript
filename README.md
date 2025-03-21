@@ -122,6 +122,25 @@ go build -o transcript
 go test ./...
 ```
 
+### CI/CD Pipeline
+
+This project uses GitHub Actions for continuous integration and deployment:
+
+- Automatically runs tests on pull requests
+- Builds and pushes Docker images on tag pushes
+- Publishes images to Docker Hub with appropriate tags
+
+To trigger a new release:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Required GitHub secrets for deployment:
+- `DOCKERHUB_USERNAME`: Your Docker Hub username
+- `DOCKERHUB_TOKEN`: Docker Hub access token with write permissions
+
 ## License
 
 [MIT License](LICENSE)

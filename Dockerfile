@@ -21,8 +21,10 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=1 GOOS=linux go build -o transcript
+# Build the application with version info
+ARG VERSION=dev
+ARG COMMIT_SHA=unknown
+RUN CGO_ENABLED=1 GOOS=linux go build -ldflags="-X 'github.com/piotrjaromin/transcript/internal/version.Version=${VERSION}' -X 'github.com/piotrjaromin/transcript/internal/version.CommitSHA=${COMMIT_SHA}'" -o transcript
 
 # Stage 2: Runtime
 FROM alpine:latest
