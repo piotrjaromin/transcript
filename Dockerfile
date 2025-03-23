@@ -49,5 +49,4 @@ EXPOSE 8080
 COPY ./scripts/entrypoint.sh /app/
 
 RUN chmod +x /app/entrypoint.sh
-# ENTRYPOINT ["/app/transcript", "--model", "/app/models/${DEFAULT_MODEL}"]
 ENTRYPOINT ["/app/entrypoint.sh"]
