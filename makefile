@@ -24,7 +24,7 @@ run-server:
 	go run main.go --model ./models/ggml-large-v2-turbo.bin server 
 
 build:
-	go build -o bin/transcribe main.go
+	go build -o bin/transcript main.go
 
 test: install
 	go test ./...

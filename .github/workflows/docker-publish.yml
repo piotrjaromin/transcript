@@ -5,14 +5,14 @@ on:
     tags:
       - 'v*'
     branches:
-      - main
+      - master
   pull_request:
-    branches: [main]
+    branches: [master]
 
 env:
   REGISTRY: docker.io
   REPOSITORY: piotrjaromin/transcribe
-  DEFAULT_MODEL: ggml-medium.en.bin
+  DEFAULT_MODEL: large-v3-turbo-q5_0.bin
 
 jobs:
   test:
