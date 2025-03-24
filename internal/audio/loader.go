@@ -6,9 +6,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
+	"unsafe"
 
-	"github.com/go-audio/wav"
+	ffmpeg "github.com/u2takey/ffmpeg-go"
 )
 
 // SampleRate is the sample rate expected by Whisper
@@ -21,88 +21,52 @@ func LoadAudioFile(filePath string) ([]float32, error) {
 		return nil, fmt.Errorf("failed to open audio file: %w", err)
 	}
 	defer file.Close()
-
-	ext := strings.ToLower(filepath.Ext(filePath))
-	switch ext {
-	case ".wav":
-		return loadWAV(file)
-	default:
-		return nil, fmt.Errorf("unsupported audio format: %s", ext)
-	}
+	
+	return convertAudioWithFFmpeg(file)
 }
 
 // LoadAudioFromReader loads audio from an io.Reader
 func LoadAudioFromReader(reader io.Reader) ([]float32, error) {
-	// Convert to bytes first since wav.NewDecoder requires io.ReadSeeker
 	data, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read audio data: %w", err)
 	}
-	
-	return loadWAVFromBytes(data)
+	return convertAudioWithFFmpeg(bytes.NewReader(data))
 }
 
-// loadWAV loads a WAV file and returns the samples as float32 values
-func loadWAV(file io.Reader) ([]float32, error) {
-	// Convert to bytes first since wav.NewDecoder requires io.ReadSeeker
-	data, err := io.ReadAll(file)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read audio data: %w", err)
-	}
+// convertAudioWithFFmpeg converts audio from any format to float32 samples
+// using FFmpeg for maximum compatibility with different audio formats
+func convertAudioWithFFmpeg(input io.Reader) ([]float32, error) {
+	var buf bytes.Buffer
 	
-	return loadWAVFromBytes(data)
-}
-
-// loadWAVFromBytes loads WAV data from a byte slice
-func loadWAVFromBytes(data []byte) ([]float32, error) {
-	// Create a bytes.Reader which implements io.ReadSeeker
-	reader := bytes.NewReader(data)
-	decoder := wav.NewDecoder(reader)
-	if !decoder.IsValidFile() {
-		return nil, fmt.Errorf("invalid WAV file")
-	}
-
-	buffer, err := decoder.FullPCMBuffer()
+	err := ffmpeg.Input("pipe:0").
+		Output("pipe:1", ffmpeg.KwArgs{
+			"f":           "f32le",
+			"ar":          SampleRate,
+			"ac":          1,
+			"loglevel":    "error",
+			"hide_banner": "",
+		}).
+		WithInput(input).
+		WithOutput(&buf).
+		Run()
+	
 	if err != nil {
-		return nil, fmt.Errorf("failed to read WAV data: %w", err)
+		return nil, fmt.Errorf("ffmpeg conversion failed: %w", err)
 	}
 
-	// Convert int samples to float32 in range [-1, 1]
-	samples := make([]float32, buffer.NumFrames())
-	for i := 0; i < buffer.NumFrames(); i++ {
-		samples[i] = float32(buffer.Data[i]) / 32768.0
+	// Convert byte buffer to float32 samples
+	raw := buf.Bytes()
+	if len(raw)%4 != 0 {
+		return nil, fmt.Errorf("invalid f32le byte length: %d", len(raw))
 	}
 
-	// Check if audio is mono
-	if buffer.Format.NumChannels > 1 {
-		return nil, fmt.Errorf("only mono audio supported, got %d channels", 
-			buffer.Format.NumChannels)
-	}
-
-	// Check if we need to resample
-	if buffer.Format.SampleRate != SampleRate {
-		fmt.Printf("Warning: audio sample rate is %dHz, resampling to %dHz\n", 
-			buffer.Format.SampleRate, SampleRate)
-		
-		// Simple linear resampling (for proper implementation, use a resampling library)
-		ratio := float64(SampleRate) / float64(buffer.Format.SampleRate)
-		newLength := int(float64(len(samples)) * ratio)
-		resampled := make([]float32, newLength)
-		
-		for i := 0; i < newLength; i++ {
-			srcIdx := float64(i) / ratio
-			idx1 := int(srcIdx)
-			idx2 := idx1 + 1
-			frac := float32(srcIdx - float64(idx1))
-			
-			if idx2 >= len(samples) {
-				resampled[i] = samples[idx1]
-			} else {
-				resampled[i] = samples[idx1]*(1-frac) + samples[idx2]*frac
-			}
-		}
-		
-		samples = resampled
+	samples := make([]float32, len(raw)/4)
+	for i := 0; i < len(samples); i++ {
+		// Convert little-endian bytes to float32
+		bytes := raw[i*4 : i*4+4]
+		bits := uint32(bytes[0]) | uint32(bytes[1])<<8 | uint32(bytes[2])<<16 | uint32(bytes[3])<<24
+		samples[i] = *(*float32)(unsafe.Pointer(&bits))
 	}
 
 	return samples, nil

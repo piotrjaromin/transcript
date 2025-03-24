@@ -28,7 +28,7 @@ FROM debian:bookworm-slim
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
-    ca-certificates portaudio19-dev alsa-utils wget ffmpeg && \
+    ca-certificates portaudio19-dev alsa-utils wget ffmpeg libavcodec-dev libavformat-dev libavutil-dev && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
