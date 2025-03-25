@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"unsafe"
 
 	ffmpeg "github.com/u2takey/ffmpeg-go"
