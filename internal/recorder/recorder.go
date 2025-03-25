@@ -2,6 +2,7 @@ package recorder
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"syscall"
@@ -98,6 +99,24 @@ func (r *Recorder) StartRecording() error {
 	return nil
 }
 
+// copyFile copies a file from src to dst
+func copyFile(src, dst string) error {
+	source, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer source.Close()
+
+	destination, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destination.Close()
+
+	_, err = io.Copy(destination, source)
+	return err
+}
+
 // StopRecording stops recording audio and returns the path to the recorded file
 func (r *Recorder) StopRecording() (string, error) {
 	if !r.recording {
@@ -143,10 +162,12 @@ func (r *Recorder) StopRecording() (string, error) {
 
 	// Save to the output file if specified
 	if r.outputFile != "" {
-		err = os.Rename(r.tempFile, r.outputFile)
+		err = copyFile(r.tempFile, r.outputFile)
 		if err != nil {
 			return "", fmt.Errorf("failed to save recording to output file: %w", err)
 		}
+		// Clean up the temporary file after successful copy
+		os.Remove(r.tempFile)
 	} else {
 		// Clean up the temporary file if we're not keeping it
 		os.Remove(r.tempFile)
