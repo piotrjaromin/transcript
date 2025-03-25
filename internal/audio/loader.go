@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"unsafe"
 
@@ -16,6 +17,11 @@ const SampleRate = 16000
 
 // LoadAudioFile loads an audio file and returns the samples as float32 values
 func LoadAudioFile(filePath string) ([]float32, error) {
+	// Check if file exists
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("failed to open audio file: file does not exist")
+	}
+
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open audio file: %w", err)
@@ -47,6 +53,7 @@ func convertAudioWithFFmpeg(input io.Reader) ([]float32, error) {
 			"ac":          1,
 			"loglevel":    "error",
 			"hide_banner": "",
+			"af":          "aresample=16000,dynaudnorm", // Add resampling and normalization
 		}).
 		WithInput(input).
 		WithOutput(&buf).
@@ -82,4 +89,19 @@ func convertAudioWithFFmpeg(input io.Reader) ([]float32, error) {
 	}
 
 	return samples, nil
+}
+
+// IsSupportedAudioFormat checks if the file extension is a commonly supported audio format
+func IsSupportedAudioFormat(filePath string) bool {
+	ext := strings.ToLower(filepath.Ext(filePath))
+	supportedFormats := []string{
+		".wav", ".mp3", ".ogg", ".flac", ".m4a", ".aac", ".wma", ".aiff", ".opus",
+	}
+
+	for _, format := range supportedFormats {
+		if ext == format {
+			return true
+		}
+	}
+	return false
 }

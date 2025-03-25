@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-audio/audio"
 	wavgo "github.com/go-audio/wav"
-	audioloader "github.com/piotrjaromin/transcript/internal/audio"
+	"github.com/piotrjaromin/transcript/internal/audio"
 )
 
 // For testing purposes

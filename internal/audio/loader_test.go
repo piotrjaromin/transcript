@@ -37,6 +37,31 @@ func TestLoadAudioFile(t *testing.T) {
 	})
 }
 
+func TestIsSupportedAudioFormat(t *testing.T) {
+	tests := []struct {
+		filePath string
+		expected bool
+	}{
+		{"test.wav", true},
+		{"test.mp3", true},
+		{"test.ogg", true},
+		{"test.flac", true},
+		{"test.m4a", true},
+		{"test.txt", false},
+		{"test.pdf", false},
+		{"test", false},
+		{"/path/to/audio.wav", true},
+		{"/path/to/document.docx", false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.filePath, func(t *testing.T) {
+			result := IsSupportedAudioFormat(test.filePath)
+			assert.Equal(t, test.expected, result)
+		})
+	}
+}
+
 func createValidTestWAV(t *testing.T, path string) {
 	file, err := os.Create(path)
 	require.NoError(t, err)
