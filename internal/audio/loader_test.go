@@ -12,10 +12,9 @@ import (
 
 func TestLoadAudioFile(t *testing.T) {
 	t.Run("valid WAV file", func(t *testing.T) {
-		tempDir := os.TempDir()
-		testFile := filepath.Join(tempDir, "test.wav")
+		// Create temp file in current directory instead of system temp
+		testFile := filepath.Join(t.TempDir(), "test.wav")
 		createValidTestWAV(t, testFile)
-		defer os.Remove(testFile)
 
 		samples, err := LoadAudioFile(testFile)
 		require.NoError(t, err, "Valid WAV file should load without error")
@@ -23,18 +22,17 @@ func TestLoadAudioFile(t *testing.T) {
 	})
 
 	t.Run("invalid file format", func(t *testing.T) {
-		// Create temp text file
-		tempDir := os.TempDir()
-		testFile := filepath.Join(tempDir, "test.txt")
+		// Create test file in test-specific temp directory
+		testFile := filepath.Join(t.TempDir(), "test.txt")
 		os.WriteFile(testFile, []byte("invalid data"), 0644)
-		defer os.Remove(testFile)
 
 		_, err := LoadAudioFile(testFile)
-		assert.ErrorContains(t, err, "unsupported audio format")
+		assert.ErrorContains(t, err, "unsupported audio format", 
+			"Should detect invalid format from FFmpeg error")
 	})
 
 	t.Run("non-existent file", func(t *testing.T) {
-		_, err := LoadAudioFile("nonexistent.wav")
+		_, err := LoadAudioFile(filepath.Join(t.TempDir(), "nonexistent.wav"))
 		assert.ErrorContains(t, err, "failed to open audio file")
 	})
 }

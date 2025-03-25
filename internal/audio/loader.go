@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"unsafe"
 
 	ffmpeg "github.com/u2takey/ffmpeg-go"
@@ -37,8 +38,9 @@ func LoadAudioFromReader(reader io.Reader) ([]float32, error) {
 // using FFmpeg for maximum compatibility with different audio formats
 func convertAudioWithFFmpeg(input io.Reader) ([]float32, error) {
 	var buf bytes.Buffer
+	var errBuf bytes.Buffer // Add buffer to capture stderr
 	
-	err := ffmpeg.Input("pipe:0").
+	cmd := ffmpeg.Input("pipe:0").
 		Output("pipe:1", ffmpeg.KwArgs{
 			"f":           "f32le",
 			"ar":          SampleRate,
@@ -48,10 +50,21 @@ func convertAudioWithFFmpeg(input io.Reader) ([]float32, error) {
 		}).
 		WithInput(input).
 		WithOutput(&buf).
-		Run()
+		WithErrorOutput(&errBuf) // Capture FFmpeg's stderr
+
+	err := cmd.Run()
 	
 	if err != nil {
-		return nil, fmt.Errorf("ffmpeg conversion failed: %w", err)
+		// Analyze FFmpeg's error output
+		errorMsg := strings.ToLower(errBuf.String())
+		switch {
+		case strings.Contains(errorMsg, "invalid data found"):
+			return nil, fmt.Errorf("unsupported audio format")
+		case strings.Contains(errorMsg, "operation not permitted"):
+			return nil, fmt.Errorf("permission denied")
+		default:
+			return nil, fmt.Errorf("ffmpeg error: %w (output: %q)", err, strings.TrimSpace(errorMsg))
+		}
 	}
 
 	// Convert byte buffer to float32 samples
